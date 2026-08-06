@@ -328,7 +328,11 @@
 
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
 
-  const dbg = { aos: 0, doa: 0, dor: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
+  const dbg = { aos: 0, doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
+
+  let started = false;     // brukeren har trykket start
+  let watchId = null;
+  let sensor  = null;
 
   function setHeading(h, name, rank) {
     if (rank < sourceRank) return;
@@ -342,7 +346,7 @@
   function startSensor() {
     if (!('AbsoluteOrientationSensor' in window)) return;
     try {
-      const s = new AbsoluteOrientationSensor({ frequency: 30, referenceFrame: 'screen' });
+      const s = sensor = new AbsoluteOrientationSensor({ frequency: 30, referenceFrame: 'screen' });
       s.addEventListener('reading', () => {
         dbg.aos++;
         const [x, y, z, w] = s.quaternion;
@@ -400,7 +404,7 @@
   function watchPosition() {
     if (!('geolocation' in navigator)) return fail('Ingen posisjon i denne nettleseren');
 
-    navigator.geolocation.watchPosition(
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy, heading: course, speed } = pos.coords;
         bearing  = bearingTo(latitude, longitude);
@@ -425,6 +429,36 @@
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
     );
   }
+
+  /* ---- gjenoppliving ---------------------------------------------
+     iOS/WKWebView fryser siden i bakgrunnen og dreper posisjonsvakt
+     og sensor-events i stillhet — uten dette henger siden på siste
+     avlesning når du kommer tilbake. */
+  function revive() {
+    dbg.revives++;
+    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    watchPosition();
+    window.removeEventListener('deviceorientationabsolute', onOrientation, true);
+    window.removeEventListener('deviceorientation', onOrientation, true);
+    listenOrientation();
+    if (sensor) { try { sensor.start(); } catch (e) { /* allerede i gang */ } }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!started) return;
+    if (document.visibilityState === 'visible') {
+      revive();
+    } else if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      if (sensor) { try { sensor.stop(); } catch (e) {} }
+    }
+  });
+
+  // bfcache: tilbake-navigasjon gjenoppretter siden med dødt sensor-oppsett
+  window.addEventListener('pageshow', (e) => {
+    if (started && e.persisted) revive();
+  });
 
   /* ---- tegning -------------------------------------------------- */
   function shortestTurn(from, to) {
@@ -480,7 +514,7 @@
     const f = (v, n = 1) => (typeof v === 'number' && !isNaN(v)) ? v.toFixed(n) : '–';
     debugEl.textContent =
       `kilde    ${source} (rank ${sourceRank})\n` +
-      `events   aos ${dbg.aos}  doa ${dbg.doa}  do ${dbg.dor}\n` +
+      `events   aos ${dbg.aos}  doa ${dbg.doa}  do ${dbg.dor}  rev ${dbg.revives}\n` +
       `perm     ${dbg.perm}\n` +
       `webkit   ${f(dbg.webkit)}\n` +
       `αβγ      ${f(dbg.alpha)} ${f(dbg.beta)} ${f(dbg.gamma)}\n` +
@@ -536,6 +570,7 @@
 
     listenOrientation();
     startSensor();
+    started = true;
 
     el.gate.hidden = true;
     el.stage.hidden = false;
