@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bodega-kompasset</title>
+<meta name="description" content="Et kompass som bare kan én ting: peke mot Bodega.">
+<meta name="theme-color" content="#D8D5CE">
+<meta property="og:title" content="Bodega-kompasset">
+<meta property="og:description" content="Et kompass som bare kan én ting: peke mot Bodega.">
+<style>
+  /* ---------------------------------------------------------------
+     BODEGA-KOMPASSET
+     Ett instrument, én oppgave. Braun-logikk: svart skive,
+     gul viser, alt annet holder kjeft.
+     --------------------------------------------------------------- */
+
+  :root{
+    --housing:  #D8D5CE;   /* husets grå */
+    --dial:     #17171A;   /* skiven */
+    --ink:      #17171A;
+    --ink-dim:  #6E6B65;
+    --needle:   #FFCB05;   /* Braun-gult */
+    --index:    #E8500F;   /* referansemerket "du" */
+    --hairline: rgba(23,23,26,.22);
+
+    --face: 'Neue Haas Grotesk Display Pro','Neue Haas Grotesk Text Pro',
+            'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  body{
+    background: var(--housing);
+    color: var(--ink);
+    font-family: var(--face);
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    display:flex;
+    justify-content:center;
+    overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none;
+  }
+
+  .app{
+    width:100%;
+    max-width:420px;
+    min-height:100%;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* --- topplinje ------------------------------------------------ */
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--hairline);
+  }
+  .wordmark{
+    font-size:15px; font-weight:700;
+    letter-spacing:.34em; text-transform:uppercase;
+  }
+  .kicker{
+    font-size:10px; font-weight:500;
+    letter-spacing:.24em; text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+
+  /* --- skiven --------------------------------------------------- */
+  .stage{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:34px;
+    padding:34px 0;
+  }
+  .dial{
+    width:min(78vw, 300px);
+    aspect-ratio:1;
+    display:block;
+  }
+  .dial .ring{ transform-origin:150px 150px; }
+  .dial .needle{ transform-origin:150px 150px; }
+
+  /* --- avlesning ------------------------------------------------ */
+  .readout{ text-align:center; }
+  .distance{
+    font-size:clamp(52px, 17vw, 76px);
+    font-weight:600;
+    letter-spacing:-.045em;
+    line-height:.9;
+  }
+  .distance .unit{
+    font-size:.30em; font-weight:500;
+    letter-spacing:.2em; margin-left:.34em;
+    vertical-align:.55em; color:var(--ink-dim);
+  }
+  .caption{
+    margin-top:12px;
+    font-size:12px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .caption strong{ color:var(--ink); font-weight:600; }
+
+  /* --- bunnlinje ------------------------------------------------ */
+  .footer{
+    border-top:1px solid var(--hairline);
+    padding-top:10px;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    font-size:10px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+
+  /* --- knapp / meldinger ---------------------------------------- */
+  .gate{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:22px;
+    padding:34px 0;
+  }
+  .gate p{
+    font-size:15px; line-height:1.5;
+    max-width:26ch; color:var(--ink-dim);
+  }
+  .gate p b{ color:var(--ink); font-weight:600; }
+
+  button{
+    font-family:inherit;
+    font-size:12px; font-weight:600;
+    letter-spacing:.2em; text-transform:uppercase;
+    color:var(--housing);
+    background:var(--dial);
+    border:0; border-radius:2px;
+    padding:17px 26px;
+    cursor:pointer;
+  }
+  button:active{ background:var(--index); }
+  button:focus-visible{ outline:3px solid var(--index); outline-offset:3px; }
+
+  [hidden]{ display:none !important; }
+
+  /* --- framme --------------------------------------------------- */
+  body.arrived{ background:var(--needle); }
+  body.arrived .footer,
+  body.arrived .kicker,
+  body.arrived .caption{ color:rgba(23,23,26,.62); }
+  body.arrived .hairline-hide{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="masthead">
+    <span class="wordmark">Bodega</span>
+    <span class="kicker" id="kicker">Kompass</span>
+  </header>
+
+  <!-- START ---------------------------------------------------- -->
+  <section class="gate" id="gate">
+    <p>Dette kompasset kan bare én ting: peke mot <b>Bodega</b>.<br>
+       Det trenger posisjonen din og retningen telefonen peker.</p>
+    <button id="start">Pek meg mot Bodega</button>
+  </section>
+
+  <!-- KOMPASS -------------------------------------------------- -->
+  <section class="stage" id="stage" hidden>
+    <svg class="dial" viewBox="0 0 300 300" aria-hidden="true">
+      <circle cx="150" cy="150" r="150" fill="var(--dial)"/>
+
+      <!-- gradring: roterer med verden -->
+      <g class="ring" id="ring">
+        <g id="ticks"></g>
+      </g>
+
+      <!-- viseren: peker mot Bodega -->
+      <g class="needle" id="needle">
+        <path d="M150 34 L163 74 L150 66 L137 74 Z" fill="var(--needle)"/>
+        <rect x="147.5" y="66" width="5" height="76" fill="var(--needle)"/>
+      </g>
+
+      <circle cx="150" cy="150" r="7" fill="var(--housing)"/>
+
+      <!-- fast referansemerke: der du står og ser -->
+      <path d="M150 8 L157 -4 L143 -4 Z" fill="var(--index)" transform="translate(0,10)"/>
+    </svg>
+
+    <div class="readout">
+      <div class="distance"><span id="dist">–</span><span class="unit" id="unit">m</span></div>
+      <div class="caption" id="caption">Finner deg</div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span id="accuracy">Kong Oscars gate 23</span>
+    <span id="status" class="hairline-hide">Bergen</span>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =============================================================
+     Målet. Bytt disse hvis baren flytter seg.
+     ============================================================= */
+  const TARGET = { lat: 60.3937156, lon: 5.3298621 };
+
+  const ARRIVED_M   = 30;   // regnes som framme
+  const ALIGNED_DEG = 10;   // regnes som "rett fram"
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    gate: $('gate'), start: $('start'), stage: $('stage'),
+    ring: $('ring'), needle: $('needle'), ticks: $('ticks'),
+    dist: $('dist'), unit: $('unit'), caption: $('caption'),
+    accuracy: $('accuracy'), status: $('status'), kicker: $('kicker')
+  };
+
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- gradring ------------------------------------------------ */
+  (function drawTicks() {
+    let svg = '';
+    for (let deg = 0; deg < 360; deg += 5) {
+      const major = deg % 45 === 0;
+      const len = major ? 15 : 7;
+      const rad = (deg - 90) * Math.PI / 180;
+      const x1 = 150 + Math.cos(rad) * 136, y1 = 150 + Math.sin(rad) * 136;
+      const x2 = 150 + Math.cos(rad) * (136 - len), y2 = 150 + Math.sin(rad) * (136 - len);
+      svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
+              stroke="${major ? 'rgba(216,213,206,.85)' : 'rgba(216,213,206,.32)'}"
+              stroke-width="${major ? 2 : 1}"/>`;
+    }
+    el.ticks.innerHTML = svg;
+  })();
+
+  /* ---- geometri ------------------------------------------------ */
+  const rad = (d) => d * Math.PI / 180;
+
+  function distanceTo(lat, lon) {
+    const R = 6371000;
+    const dLat = rad(TARGET.lat - lat), dLon = rad(TARGET.lon - lon);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(rad(lat)) * Math.cos(rad(TARGET.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function bearingTo(lat, lon) {
+    const φ1 = rad(lat), φ2 = rad(TARGET.lat), Δλ = rad(TARGET.lon - lon);
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  /* ---- tilstand ------------------------------------------------ */
+  let bearing = null;      // grader mot Bodega, fra nord
+  let heading = null;      // grader telefonen peker, fra nord
+  let distance = null;
+  let hasCompass = false;
+
+  let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
+
+  /* ---- posisjon ------------------------------------------------ */
+  function watchPosition() {
+    if (!('geolocation' in navigator)) return fail('Ingen posisjon i denne nettleseren');
+
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        bearing  = bearingTo(latitude, longitude);
+        distance = distanceTo(latitude, longitude);
+
+        // Uten kompass: bruk kursen fra GPS når du er i bevegelse
+        if (!hasCompass && typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) {
+          heading = pos.coords.heading;
+        }
+
+        el.accuracy.textContent = accuracy ? `Nøyaktighet ±${Math.round(accuracy)} m` : 'Kong Oscars gate 23';
+        render();
+      },
+      (err) => {
+        fail(err.code === err.PERMISSION_DENIED
+          ? 'Posisjon er avslått. Skru den på i innstillingene, så prøv igjen.'
+          : 'Fikk ikke tak i posisjonen din.');
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+    );
+  }
+
+  /* ---- retning -------------------------------------------------- */
+  function onOrientation(e) {
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number') {
+      h = e.webkitCompassHeading;                     // iOS: allerede mot nord
+    } else if (e.absolute === true && typeof e.alpha === 'number') {
+      h = 360 - e.alpha;                              // Android
+    }
+    if (h === null || isNaN(h)) return;
+
+    const screenAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    heading = (h + screenAngle + 360) % 360;
+    hasCompass = true;
+    render();
+  }
+
+  function listenOrientation() {
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+  }
+
+  /* ---- tegning -------------------------------------------------- */
+  function shortestTurn(from, to) {
+    return from + ((((to - from) % 360) + 540) % 360) - 180;
+  }
+
+  function render() {
+    if (distance === null) return;
+
+    // avstand
+    if (distance >= 1000) {
+      el.dist.textContent = (distance / 1000).toFixed(1).replace('.', ',');
+      el.unit.textContent = 'km';
+    } else {
+      el.dist.textContent = Math.round(distance);
+      el.unit.textContent = 'm';
+    }
+
+    // framme?
+    if (distance <= ARRIVED_M) {
+      document.body.classList.add('arrived');
+      el.caption.innerHTML = '<strong>Du står i Bodega</strong>';
+      el.kicker.textContent = 'Framme';
+      return;
+    }
+    document.body.classList.remove('arrived');
+    el.kicker.textContent = 'Kompass';
+
+    if (heading === null) {
+      el.caption.textContent = hasCompass ? 'Vrir seg på plass' : 'Gå noen skritt';
+      el.status.textContent  = 'Uten kompass';
+      return;
+    }
+
+    const delta = ((bearing - heading) % 360 + 360) % 360;
+    const off   = Math.min(delta, 360 - delta);
+
+    el.caption.innerHTML = off < ALIGNED_DEG
+      ? '<strong>Rett fram</strong>'
+      : (delta < 180 ? 'Til høyre' : 'Til venstre');
+    el.status.textContent = 'Bergen';
+  }
+
+  function animate() {
+    if (bearing !== null && heading !== null) {
+      const targetNeedle = ((bearing - heading) % 360 + 360) % 360;
+      const targetRing   = (-heading % 360 + 360) % 360;
+
+      if (reduceMotion) {
+        shownNeedle = targetNeedle; shownRing = targetRing;
+      } else {
+        shownNeedle += (shortestTurn(shownNeedle, targetNeedle) - shownNeedle) * 0.16;
+        shownRing   += (shortestTurn(shownRing,   targetRing)   - shownRing)   * 0.16;
+      }
+      el.needle.setAttribute('transform', `rotate(${shownNeedle.toFixed(2)} 150 150)`);
+      el.ring.setAttribute('transform',   `rotate(${shownRing.toFixed(2)} 150 150)`);
+    }
+    requestAnimationFrame(animate);
+  }
+
+  /* ---- feil ----------------------------------------------------- */
+  function fail(message) {
+    el.stage.hidden = true;
+    el.gate.hidden = false;
+    el.gate.innerHTML = `<p>${message}</p>`;
+    el.kicker.textContent = 'Ute av drift';
+  }
+
+  /* ---- start ---------------------------------------------------- */
+  el.start.addEventListener('click', async () => {
+    el.start.disabled = true;
+    el.start.textContent = 'Sikter inn …';
+
+    // iOS krever at dette skjer på et trykk
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const state = await DeviceOrientationEvent.requestPermission();
+        if (state === 'granted') listenOrientation();
+      } else {
+        listenOrientation();
+      }
+    } catch (e) { /* kjører videre uten kompass */ }
+
+    el.gate.hidden = true;
+    el.stage.hidden = false;
+    watchPosition();
+    animate();
+  });
+
+})();
+</script>
+</body>
+</html>
