@@ -5,9 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bodega-kompasset</title>
 <meta name="description" content="Et kompass som bare kan én ting: peke mot Bodega.">
-<meta name="theme-color" content="#D8D5CE">
+<meta name="theme-color" content="#E8391D">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23F7F5F0'/><path d='M50 14 L60 46 L50 40 L40 46 Z' fill='%23E8391D'/><rect x='48' y='40' width='4' height='34' fill='%23E8391D'/></svg>">
 <meta property="og:title" content="Bodega-kompasset">
 <meta property="og:description" content="Et kompass som bare kan én ting: peke mot Bodega.">
+<script>
+  /* Arc Search o.l. rapporterer viewport-høyde bak egen bunn-bar.
+     Måles ÉN gang ved last — aldri på resize (da hopper layouten). */
+  if (window.visualViewport) {
+    document.documentElement.style.setProperty('--vvh', visualViewport.height + 'px');
+  }
+</script>
 <style>
   /* ---------------------------------------------------------------
      BODEGA-KOMPASSET
@@ -15,27 +23,42 @@
      gul viser, alt annet holder kjeft.
      --------------------------------------------------------------- */
 
-  :root{
-    --housing:  #D8D5CE;   /* husets grå */
-    --dial:     #17171A;   /* skiven */
-    --ink:      #17171A;
-    --ink-dim:  #6E6B65;
-    --needle:   #FFCB05;   /* Braun-gult */
-    --index:    #E8500F;   /* referansemerket "du" */
-    --hairline: rgba(23,23,26,.22);
+  @font-face{
+    font-family:'Neureal';
+    src:url('fonts/neureal-regular.otf') format('opentype');
+    font-weight:normal;
+    font-style:normal;
+    font-display:swap;
+  }
 
-    --face: 'Neue Haas Grotesk Display Pro','Neue Haas Grotesk Text Pro',
+  :root{
+    /* Bodega-paletten (fra bodega-web): rødt hus, hvit skive, rød viser */
+    --rod:  #E8391D;
+    --hvit: #F7F5F0;
+
+    --housing:  var(--rod);
+    --dial:     var(--hvit);
+    --ink:      var(--hvit);
+    --ink-dim:  rgba(247,245,240,.62);
+    --needle:   var(--rod);
+    --index:    var(--hvit);   /* referansemerket "du" */
+    --hairline: rgba(247,245,240,.35);
+    --tick-major: rgba(232,57,29,.9);
+    --tick-minor: rgba(232,57,29,.35);
+
+    /* Neureal finnes kun som Regular — hierarkiet bæres av
+       størrelse, spacing og farge, aldri faux-bold. */
+    --face: 'Neureal','Neue Haas Grotesk Display Pro',
             'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
   *{ box-sizing:border-box; margin:0; padding:0; }
 
-  html,body{ height:100%; }
-
   body{
     background: var(--housing);
     color: var(--ink);
     font-family: var(--face);
+    font-weight:400;
     -webkit-font-smoothing: antialiased;
     font-variant-numeric: tabular-nums;
     display:flex;
@@ -47,7 +70,8 @@
   .app{
     width:100%;
     max-width:420px;
-    min-height:100%;
+    min-height:100svh;
+    min-height:var(--vvh, 100svh);
     padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
     display:flex;
     flex-direction:column;
@@ -62,11 +86,11 @@
     border-bottom:1px solid var(--hairline);
   }
   .wordmark{
-    font-size:15px; font-weight:700;
+    font-size:15px;
     letter-spacing:.34em; text-transform:uppercase;
   }
   .kicker{
-    font-size:10px; font-weight:500;
+    font-size:10px;
     letter-spacing:.24em; text-transform:uppercase;
     color:var(--ink-dim);
   }
@@ -86,29 +110,30 @@
     aspect-ratio:1;
     display:block;
   }
-  .dial .ring{ transform-origin:150px 150px; }
-  .dial .needle{ transform-origin:150px 150px; }
+  /* NB: ingen CSS transform-origin på ring/needle — rotate(a 150 150)-
+     attributtet bærer sitt eget origo, og CSS-origin oppå KASTER
+     elementene ut av viewBoxen (verifisert i Chrome). */
 
   /* --- avlesning ------------------------------------------------ */
   .readout{ text-align:center; }
   .distance{
     font-size:clamp(52px, 17vw, 76px);
-    font-weight:600;
-    letter-spacing:-.045em;
+    letter-spacing:-.02em;
     line-height:.9;
+    margin-left:-.085em;  /* Neureals venstre sidebæring */
   }
   .distance .unit{
-    font-size:.30em; font-weight:500;
+    font-size:.30em;
     letter-spacing:.2em; margin-left:.34em;
     vertical-align:.55em; color:var(--ink-dim);
   }
   .caption{
     margin-top:12px;
-    font-size:12px; font-weight:500;
+    font-size:12px;
     letter-spacing:.16em; text-transform:uppercase;
     color:var(--ink-dim);
   }
-  .caption strong{ color:var(--ink); font-weight:600; }
+  .caption strong{ color:var(--ink); font-weight:400; }
 
   /* --- bunnlinje ------------------------------------------------ */
   .footer{
@@ -117,7 +142,7 @@
     display:flex;
     justify-content:space-between;
     gap:12px;
-    font-size:10px; font-weight:500;
+    font-size:10px;
     letter-spacing:.16em; text-transform:uppercase;
     color:var(--ink-dim);
   }
@@ -137,11 +162,11 @@
     font-size:15px; line-height:1.5;
     max-width:26ch; color:var(--ink-dim);
   }
-  .gate p b{ color:var(--ink); font-weight:600; }
+  .gate p b{ color:var(--ink); font-weight:400; }
 
   button{
     font-family:inherit;
-    font-size:12px; font-weight:600;
+    font-size:12px; font-weight:400;
     letter-spacing:.2em; text-transform:uppercase;
     color:var(--housing);
     background:var(--dial);
@@ -149,17 +174,37 @@
     padding:17px 26px;
     cursor:pointer;
   }
-  button:active{ background:var(--index); }
+  button:active{ opacity:.85; }
   button:focus-visible{ outline:3px solid var(--index); outline-offset:3px; }
 
   [hidden]{ display:none !important; }
 
-  /* --- framme --------------------------------------------------- */
-  body.arrived{ background:var(--needle); }
-  body.arrived .footer,
-  body.arrived .kicker,
-  body.arrived .caption{ color:rgba(23,23,26,.62); }
+  /* --- framme: hele paletten inverterer ------------------------- */
+  body.arrived{
+    --housing:  var(--hvit);
+    --dial:     var(--rod);
+    --ink:      var(--rod);
+    --ink-dim:  rgba(232,57,29,.65);
+    --needle:   var(--hvit);
+    --index:    var(--rod);
+    --hairline: rgba(232,57,29,.35);
+    --tick-major: rgba(247,245,240,.9);
+    --tick-minor: rgba(247,245,240,.35);
+  }
   body.arrived .hairline-hide{ display:none; }
+
+  /* --- felttest-overlay (?debug=1) ------------------------------ */
+  #debug{
+    position:fixed; left:8px; top:8px; z-index:9;
+    font:10px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing:0; text-transform:none;
+    color:var(--rod);
+    background:rgba(247,245,240,.95);
+    border:1px solid rgba(232,57,29,.35);
+    padding:8px 10px;
+    white-space:pre;
+    pointer-events:none;
+  }
 </style>
 </head>
 <body>
@@ -234,6 +279,7 @@
   };
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DEBUG = new URLSearchParams(location.search).has('debug');
 
   /* ---- gradring ------------------------------------------------ */
   (function drawTicks() {
@@ -245,7 +291,7 @@
       const x1 = 150 + Math.cos(rad) * 136, y1 = 150 + Math.sin(rad) * 136;
       const x2 = 150 + Math.cos(rad) * (136 - len), y2 = 150 + Math.sin(rad) * (136 - len);
       svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
-              stroke="${major ? 'rgba(216,213,206,.85)' : 'rgba(216,213,206,.32)'}"
+              stroke="var(${major ? '--tick-major' : '--tick-minor'})"
               stroke-width="${major ? 2 : 1}"/>`;
     }
     el.ticks.innerHTML = svg;
@@ -271,11 +317,83 @@
 
   /* ---- tilstand ------------------------------------------------ */
   let bearing = null;      // grader mot Bodega, fra nord
-  let heading = null;      // grader telefonen peker, fra nord
+  let heading = null;      // grader du peker, fra nord
   let distance = null;
-  let hasCompass = false;
+
+  /* Kilde-prioritet: en svakere kilde får aldri overstyre en sterkere.
+     4 sensor (kvaternion)  3 webkit (iOS)  2 euler (absolute)  1 gps */
+  let source = 'ingen';
+  let sourceRank = 0;
 
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
+
+  const dbg = { aos: 0, doa: 0, dor: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
+
+  function setHeading(h, name, rank) {
+    if (rank < sourceRank) return;
+    heading = ((h % 360) + 360) % 360;
+    source = name;
+    sourceRank = rank;
+    render();
+  }
+
+  /* ---- retning: AbsoluteOrientationSensor (Android Chrome) ----- */
+  function startSensor() {
+    if (!('AbsoluteOrientationSensor' in window)) return;
+    try {
+      const s = new AbsoluteOrientationSensor({ frequency: 30, referenceFrame: 'screen' });
+      s.addEventListener('reading', () => {
+        dbg.aos++;
+        const [x, y, z, w] = s.quaternion;
+        // Skjermens bakside (-z) projisert i horisontalplanet; jord-ramme x=øst, y=nord.
+        // Retningen du ser — og uavhengig av hvordan skjermen er rotert.
+        let vx = -2 * (x * z + w * y);
+        let vy = -2 * (y * z - w * x);
+        if (Math.hypot(vx, vy) < 0.1) {
+          // Ligger flatt: bruk toppen av skjermen i stedet
+          vx = 2 * (x * y - w * z);
+          vy = 1 - 2 * (x * x + z * z);
+        }
+        setHeading(Math.atan2(vx, vy) * 180 / Math.PI, 'sensor', 4);
+      });
+      s.addEventListener('error', () => { /* blokkert sensor: events tar over */ });
+      s.start();
+    } catch (e) { /* Permissions policy o.l. — events tar over */ }
+  }
+
+  /* ---- retning: deviceorientation ------------------------------ */
+  function eulerHeading(alpha, beta, gamma) {
+    // W3C-spec-eksempelet: tilt-kompensert kurs = horisontal projeksjon
+    // av enhetens -z-akse. Vipping flytter ikke kursen.
+    const d = Math.PI / 180;
+    const _x = (beta || 0) * d, _y = (gamma || 0) * d, _z = (alpha || 0) * d;
+    const cX = Math.cos(_x), cY = Math.cos(_y), cZ = Math.cos(_z);
+    const sX = Math.sin(_x), sY = Math.sin(_y), sZ = Math.sin(_z);
+    const Vx = -cZ * sY - sZ * sX * cY;
+    const Vy = -sZ * sY + cZ * sX * cY;
+    return Math.atan2(Vx, Vy) * 180 / Math.PI;
+  }
+
+  function onOrientation(e) {
+    if (e.type === 'deviceorientationabsolute') dbg.doa++; else dbg.dor++;
+    dbg.alpha = e.alpha; dbg.beta = e.beta; dbg.gamma = e.gamma;
+    dbg.webkit = e.webkitCompassHeading;
+
+    if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+      // iOS: tilt-kompensert, relativ til toppen av skjermen → skjermvinkel legges til
+      const screenAngle = (screen.orientation && screen.orientation.angle) || 0;
+      setHeading(e.webkitCompassHeading + screenAngle, 'webkit', 3);
+    } else if (e.absolute === true && typeof e.alpha === 'number') {
+      setHeading(eulerHeading(e.alpha, e.beta, e.gamma), 'euler', 2);
+    }
+    // Relative events uten webkitCompassHeading brukes ALDRI:
+    // gyro med vilkårlig nullpunkt = pil som driver.
+  }
+
+  function listenOrientation() {
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+  }
 
   /* ---- posisjon ------------------------------------------------ */
   function watchPosition() {
@@ -283,13 +401,16 @@
 
     navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+        const { latitude, longitude, accuracy, heading: course, speed } = pos.coords;
         bearing  = bearingTo(latitude, longitude);
         distance = distanceTo(latitude, longitude);
 
-        // Uten kompass: bruk kursen fra GPS når du er i bevegelse
-        if (!hasCompass && typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) {
-          heading = pos.coords.heading;
+        // Siste utvei uten kompass: GPS-kurs — men bare i reell bevegelse,
+        // ellers gir stillestående GPS-støy en pil som vandrer.
+        if (sourceRank <= 1 &&
+            typeof course === 'number' && !isNaN(course) &&
+            typeof speed === 'number' && speed > 0.5) {
+          setHeading(course, 'gps', 1);
         }
 
         el.accuracy.textContent = accuracy ? `Nøyaktighet ±${Math.round(accuracy)} m` : 'Kong Oscars gate 23';
@@ -302,27 +423,6 @@
       },
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
     );
-  }
-
-  /* ---- retning -------------------------------------------------- */
-  function onOrientation(e) {
-    let h = null;
-    if (typeof e.webkitCompassHeading === 'number') {
-      h = e.webkitCompassHeading;                     // iOS: allerede mot nord
-    } else if (e.absolute === true && typeof e.alpha === 'number') {
-      h = 360 - e.alpha;                              // Android
-    }
-    if (h === null || isNaN(h)) return;
-
-    const screenAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-    heading = (h + screenAngle + 360) % 360;
-    hasCompass = true;
-    render();
-  }
-
-  function listenOrientation() {
-    window.addEventListener('deviceorientationabsolute', onOrientation, true);
-    window.addEventListener('deviceorientation', onOrientation, true);
   }
 
   /* ---- tegning -------------------------------------------------- */
@@ -353,8 +453,8 @@
     el.kicker.textContent = 'Kompass';
 
     if (heading === null) {
-      el.caption.textContent = hasCompass ? 'Vrir seg på plass' : 'Gå noen skritt';
-      el.status.textContent  = 'Uten kompass';
+      el.caption.textContent = 'Finner retning';
+      el.status.textContent  = 'Bergen';
       return;
     }
 
@@ -364,9 +464,32 @@
     el.caption.innerHTML = off < ALIGNED_DEG
       ? '<strong>Rett fram</strong>'
       : (delta < 180 ? 'Til høyre' : 'Til venstre');
-    el.status.textContent = 'Bergen';
+    el.status.textContent = source === 'gps' ? 'Uten kompass' : 'Bergen';
   }
 
+  /* ---- felttest-overlay ----------------------------------------- */
+  let debugEl = null;
+  function renderDebug() {
+    if (!DEBUG) return;
+    if (!debugEl) {
+      debugEl = document.createElement('div');
+      debugEl.id = 'debug';
+      document.body.appendChild(debugEl);
+    }
+    const f = (v, n = 1) => (typeof v === 'number' && !isNaN(v)) ? v.toFixed(n) : '–';
+    debugEl.textContent =
+      `kilde    ${source} (rank ${sourceRank})\n` +
+      `events   aos ${dbg.aos}  doa ${dbg.doa}  do ${dbg.dor}\n` +
+      `perm     ${dbg.perm}\n` +
+      `webkit   ${f(dbg.webkit)}\n` +
+      `αβγ      ${f(dbg.alpha)} ${f(dbg.beta)} ${f(dbg.gamma)}\n` +
+      `screen∠  ${(screen.orientation && screen.orientation.angle) || 0}\n` +
+      `heading  ${f(heading)}\n` +
+      `bearing  ${f(bearing)}\n` +
+      `avstand  ${f(distance, 0)} m`;
+  }
+
+  /* ---- animasjon ------------------------------------------------ */
   function animate() {
     if (bearing !== null && heading !== null) {
       const targetNeedle = ((bearing - heading) % 360 + 360) % 360;
@@ -381,6 +504,7 @@
       el.needle.setAttribute('transform', `rotate(${shownNeedle.toFixed(2)} 150 150)`);
       el.ring.setAttribute('transform',   `rotate(${shownRing.toFixed(2)} 150 150)`);
     }
+    renderDebug();
     requestAnimationFrame(animate);
   }
 
@@ -397,16 +521,20 @@
     el.start.disabled = true;
     el.start.textContent = 'Sikter inn …';
 
-    // iOS krever at dette skjer på et trykk
+    // iOS krever at dette skjer på et trykk. Noen nettlesere (Arc Search o.l.)
+    // har requestPermission som feiler — da lytter vi likevel: kommer det
+    // ingen events, faller vi til GPS-kurs.
     try {
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const state = await DeviceOrientationEvent.requestPermission();
-        if (state === 'granted') listenOrientation();
+        dbg.perm = await DeviceOrientationEvent.requestPermission();
       } else {
-        listenOrientation();
+        dbg.perm = 'ikke påkrevd';
       }
-    } catch (e) { /* kjører videre uten kompass */ }
+    } catch (e) { dbg.perm = 'feilet'; }
+
+    listenOrientation();
+    startSensor();
 
     el.gate.hidden = true;
     el.stage.hidden = false;
