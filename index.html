@@ -115,13 +115,12 @@
      attributtet bærer sitt eget origo, og CSS-origin oppå KASTER
      elementene ut av viewBoxen (verifisert i Chrome). */
 
-  #bubble{
-    fill:none;
-    stroke:var(--needle);
-    stroke-width:2;
-    transition: fill .25s;
-  }
-  #bubble.level{ fill:var(--needle); }
+  #bubble{ fill:url(#bubGrad); }
+  .bub-hi{ stop-color:var(--dial); }
+  .bub-mid{ stop-color:var(--needle); }
+  .bub-edge{ stop-color:var(--needle); }
+  .ring-inner{ transition: stroke .2s; }
+  #level.level .ring-inner{ stroke:var(--needle); }
 
   /* --- avlesning ------------------------------------------------ */
   .readout{ text-align:center; }
@@ -235,6 +234,30 @@
   <!-- KOMPASS -------------------------------------------------- -->
   <section class="stage" id="stage" hidden>
     <svg class="dial" viewBox="0 0 300 300" aria-hidden="true">
+      <defs>
+        <!-- kuppel: mørkner mot kanten = konveks glassfølelse -->
+        <radialGradient id="domeShade" cx="50%" cy="42%" r="62%">
+          <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+          <stop offset="86%" stop-color="#000" stop-opacity=".06"/>
+          <stop offset="100%" stop-color="#000" stop-opacity=".18"/>
+        </radialGradient>
+        <!-- bobla: lys oppe-venstre, mettet mot kanten = kule -->
+        <radialGradient id="bubGrad" cx="38%" cy="32%" r="75%">
+          <stop class="bub-hi"   offset="0%"  stop-opacity=".95"/>
+          <stop class="bub-mid"  offset="45%" stop-opacity=".7"/>
+          <stop class="bub-edge" offset="100%" stop-opacity="1"/>
+        </radialGradient>
+        <!-- myk slagskygge under bobla -->
+        <radialGradient id="bubShadow" cx="50%" cy="50%" r="50%">
+          <stop offset="55%" stop-color="#000" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+        </radialGradient>
+        <!-- speilblink i glasset -->
+        <radialGradient id="spec" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
       <circle cx="150" cy="150" r="150" fill="var(--dial)"/>
 
       <!-- gradring: roterer med verden -->
@@ -242,10 +265,18 @@
         <g id="ticks"></g>
       </g>
 
-      <!-- libelle: målringer for vater -->
+      <!-- libelle: dåselibell med glass-kuppel -->
       <g id="level" opacity="0">
-        <circle cx="150" cy="150" r="26" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
-        <circle cx="150" cy="150" r="12" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
+        <circle cx="150" cy="150" r="64" fill="var(--dial)" stroke="var(--tick-minor)" stroke-width="1"/>
+        <circle cx="150" cy="150" r="64" fill="url(#domeShade)"/>
+        <circle cx="150" cy="150" r="44" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
+        <circle class="ring-inner" cx="150" cy="150" r="22" fill="none" stroke="var(--tick-minor)" stroke-width="1.5"/>
+        <g id="bubbleG">
+          <circle cx="154" cy="156" r="25" fill="url(#bubShadow)"/>
+          <circle id="bubble" cx="150" cy="150" r="20"/>
+          <circle cx="143" cy="142" r="5.5" fill="var(--dial)" opacity=".85"/>
+        </g>
+        <ellipse cx="126" cy="116" rx="30" ry="13" fill="url(#spec)" transform="rotate(-32 126 116)"/>
       </g>
 
       <!-- viseren: peker mot Bodega -->
@@ -255,9 +286,6 @@
       </g>
 
       <circle cx="150" cy="150" r="7" fill="var(--housing)"/>
-
-      <!-- bobla: driver med helningen, ringer navet når du er i vater -->
-      <circle id="bubble" cx="150" cy="150" r="9" opacity="0"/>
 
       <!-- fast referansemerke: der du står og ser -->
       <path d="M150 8 L157 -4 L143 -4 Z" fill="var(--index)" transform="translate(0,10)"/>
@@ -294,7 +322,7 @@
     ring: $('ring'), needle: $('needle'), ticks: $('ticks'),
     dist: $('dist'), unit: $('unit'), caption: $('caption'),
     accuracy: $('accuracy'), status: $('status'), kicker: $('kicker'),
-    level: $('level'), bubble: $('bubble')
+    level: $('level'), bubbleG: $('bubbleG')
   };
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -346,7 +374,7 @@
 
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
   let tiltBeta = null, tiltGamma = null;      // helning, til libellen
-  let shownBubX = 150, shownBubY = 150;
+  let shownBubX = 0, shownBubY = 0;           // boble-forskyvning fra sentrum
 
   const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
 
@@ -546,18 +574,16 @@
     // libellen: bobla søker mot høyeste punkt, ±30° gir fullt utslag
     if (tiltBeta !== null) {
       el.level.setAttribute('opacity', '1');
-      el.bubble.setAttribute('opacity', '1');
       const lim = (v) => Math.max(-1, Math.min(1, v / 30));
-      const tx = 150 - lim(tiltGamma) * 30;
-      const ty = 150 - lim(tiltBeta) * 30;
+      const tx = -lim(tiltGamma) * 40;
+      const ty = -lim(tiltBeta) * 40;
       if (reduceMotion) { shownBubX = tx; shownBubY = ty; }
       else {
         shownBubX += (tx - shownBubX) * 0.16;
         shownBubY += (ty - shownBubY) * 0.16;
       }
-      el.bubble.setAttribute('cx', shownBubX.toFixed(1));
-      el.bubble.setAttribute('cy', shownBubY.toFixed(1));
-      el.bubble.classList.toggle('level',
+      el.bubbleG.setAttribute('transform', `translate(${shownBubX.toFixed(1)} ${shownBubY.toFixed(1)})`);
+      el.level.classList.toggle('level',
         Math.abs(tiltBeta) < 2.5 && Math.abs(tiltGamma) < 2.5);
     }
     renderDebug();
