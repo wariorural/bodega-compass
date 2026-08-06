@@ -36,15 +36,19 @@
     --rod:  #E8391D;
     --hvit: #F7F5F0;
 
+    /* KUN ren rød og ren hvit — ingen alfa-toner.
+       Hierarki bæres av størrelse og strek-tykkelse. */
     --housing:  var(--rod);
     --dial:     var(--hvit);
     --ink:      var(--hvit);
-    --ink-dim:  rgba(247,245,240,.62);
+    --ink-dim:  var(--hvit);
     --needle:   var(--rod);
-    --index:    var(--hvit);   /* referansemerket "du" */
-    --hairline: rgba(247,245,240,.35);
-    --tick-major: rgba(232,57,29,.9);
-    --tick-minor: rgba(232,57,29,.35);
+    --index:    var(--hvit);   /* fokusring o.l. */
+    --hairline: var(--hvit);
+    --tick-major: var(--rod);
+    --tick-minor: var(--rod);
+    --tick-major-inv: var(--hvit);
+    --tick-minor-inv: var(--hvit);
 
     /* Neureal finnes kun som Regular — hierarkiet bæres av
        størrelse, spacing og farge, aldri faux-bold. */
@@ -115,10 +119,18 @@
      attributtet bærer sitt eget origo, og CSS-origin oppå KASTER
      elementene ut av viewBoxen (verifisert i Chrome). */
 
-  #bubble{ fill:url(#bubGrad); }
-  .bub-hi{ stop-color:var(--dial); }
-  .bub-mid{ stop-color:var(--needle); }
-  .bub-edge{ stop-color:var(--needle); }
+  #bubble{ fill:var(--needle); }
+  #bubbleHi{ fill:var(--dial); }
+
+  /* Boblas innmat: en klippet klone av innholdet med omkoblede tokens —
+     alt under det røde feltet bytter farge, og følger paletten i framme */
+  .inverted{
+    --needle: var(--dial);
+    --housing: var(--dial);
+    --tick-major: var(--tick-major-inv);
+    --tick-minor: var(--tick-minor-inv);
+  }
+
   .ring-inner{ transition: stroke .2s; }
   #level.level .ring-inner{ stroke:var(--needle); }
 
@@ -182,7 +194,7 @@
     padding:17px 26px;
     cursor:pointer;
   }
-  button:active{ opacity:.85; }
+  button:active{ transform:translateY(1px); }
   button:focus-visible{ outline:3px solid var(--index); outline-offset:3px; }
 
   [hidden]{ display:none !important; }
@@ -192,12 +204,14 @@
     --housing:  var(--hvit);
     --dial:     var(--rod);
     --ink:      var(--rod);
-    --ink-dim:  rgba(232,57,29,.65);
+    --ink-dim:  var(--rod);
     --needle:   var(--hvit);
     --index:    var(--rod);
-    --hairline: rgba(232,57,29,.35);
-    --tick-major: rgba(247,245,240,.9);
-    --tick-minor: rgba(247,245,240,.35);
+    --hairline: var(--rod);
+    --tick-major: var(--hvit);
+    --tick-minor: var(--hvit);
+    --tick-major-inv: var(--rod);
+    --tick-minor-inv: var(--rod);
   }
   body.arrived .hairline-hide{ display:none; }
 
@@ -207,8 +221,8 @@
     font:10px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
     letter-spacing:0; text-transform:none;
     color:var(--rod);
-    background:rgba(247,245,240,.95);
-    border:1px solid rgba(232,57,29,.35);
+    background:var(--hvit);
+    border:1px solid var(--rod);
     padding:8px 10px;
     white-space:pre;
     pointer-events:none;
@@ -235,57 +249,47 @@
   <section class="stage" id="stage" hidden>
     <svg class="dial" viewBox="0 0 300 300" aria-hidden="true">
       <defs>
-        <!-- kuppel: mørkner mot kanten = konveks glassfølelse -->
-        <radialGradient id="domeShade" cx="50%" cy="42%" r="62%">
-          <stop offset="55%" stop-color="#000" stop-opacity="0"/>
-          <stop offset="86%" stop-color="#000" stop-opacity=".06"/>
-          <stop offset="100%" stop-color="#000" stop-opacity=".18"/>
-        </radialGradient>
-        <!-- bobla: lys oppe-venstre, mettet mot kanten = kule -->
-        <radialGradient id="bubGrad" cx="38%" cy="32%" r="75%">
-          <stop class="bub-hi"   offset="0%"  stop-opacity=".95"/>
-          <stop class="bub-mid"  offset="45%" stop-opacity=".7"/>
-          <stop class="bub-edge" offset="100%" stop-opacity="1"/>
-        </radialGradient>
-        <!-- myk slagskygge under bobla -->
-        <radialGradient id="bubShadow" cx="50%" cy="50%" r="50%">
-          <stop offset="55%" stop-color="#000" stop-opacity=".22"/>
-          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-        </radialGradient>
-        <!-- speilblink i glasset -->
-        <radialGradient id="spec" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#fff" stop-opacity=".55"/>
-          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
-        </radialGradient>
+        <clipPath id="bubClip"><circle id="clipC" cx="150" cy="150" r="52"/></clipPath>
       </defs>
+
       <circle cx="150" cy="150" r="150" fill="var(--dial)"/>
 
-      <!-- gradring: roterer med verden -->
-      <g class="ring" id="ring">
-        <g id="ticks"></g>
-      </g>
-
-      <!-- libelle: dåselibell med glass-kuppel -->
-      <g id="level" opacity="0">
-        <circle cx="150" cy="150" r="64" fill="var(--dial)" stroke="var(--tick-minor)" stroke-width="1"/>
-        <circle cx="150" cy="150" r="64" fill="url(#domeShade)"/>
-        <circle cx="150" cy="150" r="44" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
-        <circle class="ring-inner" cx="150" cy="150" r="22" fill="none" stroke="var(--tick-minor)" stroke-width="1.5"/>
-        <g id="bubbleG">
-          <circle cx="154" cy="156" r="25" fill="url(#bubShadow)"/>
-          <circle id="bubble" cx="150" cy="150" r="20"/>
-          <circle cx="143" cy="142" r="5.5" fill="var(--dial)" opacity=".85"/>
+      <!-- alt som kan havne under bobla — dupliseres invertert i klippet -->
+      <g id="content">
+        <!-- gradring: roterer med verden -->
+        <g class="ring" id="ring">
+          <g id="ticks"></g>
         </g>
-        <ellipse cx="126" cy="116" rx="30" ry="13" fill="url(#spec)" transform="rotate(-32 126 116)"/>
+
+        <!-- libelle: trykt bull's-eye (usynlig til første tilt-event) -->
+        <g id="level" opacity="0">
+          <circle cx="150" cy="150" r="100" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
+          <line x1="150" y1="74" x2="150" y2="86" stroke="var(--tick-minor)" stroke-width="1"/>
+          <line x1="150" y1="214" x2="150" y2="226" stroke="var(--tick-minor)" stroke-width="1"/>
+          <line x1="74" y1="150" x2="86" y2="150" stroke="var(--tick-minor)" stroke-width="1"/>
+          <line x1="214" y1="150" x2="226" y2="150" stroke="var(--tick-minor)" stroke-width="1"/>
+          <circle class="ring-inner" cx="150" cy="150" r="56" fill="none" stroke="var(--tick-minor)" stroke-width="1.5"/>
+        </g>
+
+        <!-- viseren: peker mot Bodega -->
+        <g class="needle" id="needle">
+          <path d="M150 32 L164 76 L150 67 L136 76 Z" fill="var(--needle)"/>
+          <rect x="146.5" y="67" width="7" height="78" fill="var(--needle)"/>
+        </g>
+
+        <circle cx="150" cy="150" r="9" fill="var(--housing)"/>
       </g>
 
-      <!-- viseren: peker mot Bodega -->
-      <g class="needle" id="needle">
-        <path d="M150 34 L163 74 L150 66 L137 74 Z" fill="var(--needle)"/>
-        <rect x="147.5" y="66" width="5" height="76" fill="var(--needle)"/>
+      <!-- bobla: et rødt felt som inverterer det den ligger over -->
+      <g id="bubbleG" opacity="0">
+        <circle id="bubble" cx="150" cy="150" r="52"/>
       </g>
-
-      <circle cx="150" cy="150" r="7" fill="var(--housing)"/>
+      <g id="ovl" clip-path="url(#bubClip)" opacity="0">
+        <use href="#content" class="inverted"/>
+      </g>
+      <g id="hiG" opacity="0">
+        <circle id="bubbleHi" cx="134" cy="132" r="10"/>
+      </g>
 
       <!-- fast referansemerke: der du står og ser -->
       <path d="M150 8 L157 -4 L143 -4 Z" fill="var(--index)" transform="translate(0,10)"/>
@@ -322,7 +326,8 @@
     ring: $('ring'), needle: $('needle'), ticks: $('ticks'),
     dist: $('dist'), unit: $('unit'), caption: $('caption'),
     accuracy: $('accuracy'), status: $('status'), kicker: $('kicker'),
-    level: $('level'), bubbleG: $('bubbleG')
+    level: $('level'), bubbleG: $('bubbleG'),
+    clipC: $('clipC'), ovl: $('ovl'), hiG: $('hiG')
   };
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -333,13 +338,13 @@
     let svg = '';
     for (let deg = 0; deg < 360; deg += 5) {
       const major = deg % 45 === 0;
-      const len = major ? 15 : 7;
+      const len = major ? 14 : 6;
       const rad = (deg - 90) * Math.PI / 180;
       const x1 = 150 + Math.cos(rad) * 136, y1 = 150 + Math.sin(rad) * 136;
       const x2 = 150 + Math.cos(rad) * (136 - len), y2 = 150 + Math.sin(rad) * (136 - len);
       svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
               stroke="var(${major ? '--tick-major' : '--tick-minor'})"
-              stroke-width="${major ? 2 : 1}"/>`;
+              stroke-width="${major ? 2.5 : 1.25}"/>`;
     }
     el.ticks.innerHTML = svg;
   })();
@@ -375,6 +380,7 @@
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
   let tiltBeta = null, tiltGamma = null;      // helning, til libellen
   let shownBubX = 0, shownBubY = 0;           // boble-forskyvning fra sentrum
+  let isLevel = false;                        // med hysterese, mot flimring
 
   const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
 
@@ -571,20 +577,31 @@
       el.ring.setAttribute('transform',   `rotate(${shownRing.toFixed(2)} 150 150)`);
     }
 
-    // libellen: bobla søker mot høyeste punkt, ±30° gir fullt utslag
+    // libellen: bobla søker mot høyeste punkt, ±30° gir fullt utslag (78px)
     if (tiltBeta !== null) {
       el.level.setAttribute('opacity', '1');
+      el.bubbleG.setAttribute('opacity', '1');
+      el.ovl.setAttribute('opacity', '1');
+      el.hiG.setAttribute('opacity', '1');
       const lim = (v) => Math.max(-1, Math.min(1, v / 30));
-      const tx = -lim(tiltGamma) * 40;
-      const ty = -lim(tiltBeta) * 40;
+      let tx = -lim(tiltGamma) * 78;
+      let ty = -lim(tiltBeta) * 78;
+      const m = Math.hypot(tx, ty);
+      if (m > 78) { tx = tx / m * 78; ty = ty / m * 78; }  // radiell klemming: aldri ut av skiven
       if (reduceMotion) { shownBubX = tx; shownBubY = ty; }
       else {
         shownBubX += (tx - shownBubX) * 0.16;
         shownBubY += (ty - shownBubY) * 0.16;
       }
-      el.bubbleG.setAttribute('transform', `translate(${shownBubX.toFixed(1)} ${shownBubY.toFixed(1)})`);
-      el.level.classList.toggle('level',
-        Math.abs(tiltBeta) < 2.5 && Math.abs(tiltGamma) < 2.5);
+      // bobla, klippet og highlighten følger hverandre
+      const tf = `translate(${shownBubX.toFixed(1)} ${shownBubY.toFixed(1)})`;
+      el.bubbleG.setAttribute('transform', tf);
+      el.clipC.setAttribute('transform', tf);
+      el.hiG.setAttribute('transform', tf);
+      // i vater = bobla (r52) sitter i indre målring (r56); hysterese mot flimring
+      const off = Math.hypot(shownBubX, shownBubY);
+      isLevel = isLevel ? (off < 7) : (off < 4);
+      el.level.classList.toggle('level', isLevel);
     }
     renderDebug();
     requestAnimationFrame(animate);
