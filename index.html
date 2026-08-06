@@ -331,6 +331,7 @@
   const dbg = { aos: 0, doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
 
   let started = false;     // brukeren har trykket start
+  let permDenied = false;  // kompass-tilgang aktivt avslått (iOS)
   let watchId = null;
   let sensor  = null;
 
@@ -488,8 +489,8 @@
     el.kicker.textContent = 'Kompass';
 
     if (heading === null) {
-      el.caption.textContent = 'Finner retning';
-      el.status.textContent  = 'Bergen';
+      el.caption.textContent = permDenied ? 'Kompass avslått – gå noen skritt' : 'Finner retning';
+      el.status.textContent  = permDenied ? 'Uten kompass' : 'Bergen';
       return;
     }
 
@@ -567,6 +568,7 @@
         dbg.perm = 'ikke påkrevd';
       }
     } catch (e) { dbg.perm = 'feilet'; }
+    permDenied = dbg.perm === 'denied';
 
     listenOrientation();
     startSensor();
