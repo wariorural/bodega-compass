@@ -424,7 +424,7 @@
       },
       (err) => {
         fail(err.code === err.PERMISSION_DENIED
-          ? 'Posisjon er avslått. Skru den på i innstillingene, så prøv igjen.'
+          ? 'Posisjon er avslått for denne siden. I Safari: trykk aA i adressefeltet → Innstillinger for nettsted → Posisjon → Tillat. Privat fane blokkerer også posisjon.'
           : 'Fikk ikke tak i posisjonen din.');
       },
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
@@ -548,7 +548,7 @@
   function fail(message) {
     el.stage.hidden = true;
     el.gate.hidden = false;
-    el.gate.innerHTML = `<p>${message}</p>`;
+    el.gate.innerHTML = `<p>${message}</p><button onclick="location.reload()">Prøv igjen</button>`;
     el.kicker.textContent = 'Ute av drift';
   }
 
