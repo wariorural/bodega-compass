@@ -115,6 +115,14 @@
      attributtet bærer sitt eget origo, og CSS-origin oppå KASTER
      elementene ut av viewBoxen (verifisert i Chrome). */
 
+  #bubble{
+    fill:none;
+    stroke:var(--needle);
+    stroke-width:2;
+    transition: fill .25s;
+  }
+  #bubble.level{ fill:var(--needle); }
+
   /* --- avlesning ------------------------------------------------ */
   .readout{ text-align:center; }
   .distance{
@@ -234,6 +242,12 @@
         <g id="ticks"></g>
       </g>
 
+      <!-- libelle: målringer for vater -->
+      <g id="level" opacity="0">
+        <circle cx="150" cy="150" r="26" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
+        <circle cx="150" cy="150" r="12" fill="none" stroke="var(--tick-minor)" stroke-width="1"/>
+      </g>
+
       <!-- viseren: peker mot Bodega -->
       <g class="needle" id="needle">
         <path d="M150 34 L163 74 L150 66 L137 74 Z" fill="var(--needle)"/>
@@ -241,6 +255,9 @@
       </g>
 
       <circle cx="150" cy="150" r="7" fill="var(--housing)"/>
+
+      <!-- bobla: driver med helningen, ringer navet når du er i vater -->
+      <circle id="bubble" cx="150" cy="150" r="9" opacity="0"/>
 
       <!-- fast referansemerke: der du står og ser -->
       <path d="M150 8 L157 -4 L143 -4 Z" fill="var(--index)" transform="translate(0,10)"/>
@@ -276,7 +293,8 @@
     gate: $('gate'), start: $('start'), stage: $('stage'),
     ring: $('ring'), needle: $('needle'), ticks: $('ticks'),
     dist: $('dist'), unit: $('unit'), caption: $('caption'),
-    accuracy: $('accuracy'), status: $('status'), kicker: $('kicker')
+    accuracy: $('accuracy'), status: $('status'), kicker: $('kicker'),
+    level: $('level'), bubble: $('bubble')
   };
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -327,6 +345,8 @@
   let sourceRank = 0;
 
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
+  let tiltBeta = null, tiltGamma = null;      // helning, til libellen
+  let shownBubX = 150, shownBubY = 150;
 
   const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
 
@@ -362,6 +382,12 @@
     if (e.type === 'deviceorientationabsolute') dbg.doa++; else dbg.dor++;
     dbg.alpha = e.alpha; dbg.beta = e.beta; dbg.gamma = e.gamma;
     dbg.webkit = e.webkitCompassHeading;
+
+    // Helning til libellen — tyngdekraft trenger ikke kompass,
+    // så her duger også relative events.
+    if (typeof e.beta === 'number' && typeof e.gamma === 'number') {
+      tiltBeta = e.beta; tiltGamma = e.gamma;
+    }
 
     if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
       // iOS: tilt-kompensert, relativ til toppen av skjermen → skjermvinkel legges til
@@ -515,6 +541,24 @@
       }
       el.needle.setAttribute('transform', `rotate(${shownNeedle.toFixed(2)} 150 150)`);
       el.ring.setAttribute('transform',   `rotate(${shownRing.toFixed(2)} 150 150)`);
+    }
+
+    // libellen: bobla søker mot høyeste punkt, ±30° gir fullt utslag
+    if (tiltBeta !== null) {
+      el.level.setAttribute('opacity', '1');
+      el.bubble.setAttribute('opacity', '1');
+      const lim = (v) => Math.max(-1, Math.min(1, v / 30));
+      const tx = 150 - lim(tiltGamma) * 30;
+      const ty = 150 - lim(tiltBeta) * 30;
+      if (reduceMotion) { shownBubX = tx; shownBubY = ty; }
+      else {
+        shownBubX += (tx - shownBubX) * 0.16;
+        shownBubY += (ty - shownBubY) * 0.16;
+      }
+      el.bubble.setAttribute('cx', shownBubX.toFixed(1));
+      el.bubble.setAttribute('cy', shownBubY.toFixed(1));
+      el.bubble.classList.toggle('level',
+        Math.abs(tiltBeta) < 2.5 && Math.abs(tiltGamma) < 2.5);
     }
     renderDebug();
     requestAnimationFrame(animate);
