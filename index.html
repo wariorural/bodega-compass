@@ -322,18 +322,17 @@
   let distance = null;
 
   /* Kilde-prioritet: en svakere kilde får aldri overstyre en sterkere.
-     4 sensor (kvaternion)  3 webkit (iOS)  2 euler (absolute)  1 gps */
+     3 webkit (iOS)  2 euler (absolute, Android)  1 gps */
   let source = 'ingen';
   let sourceRank = 0;
 
   let shownNeedle = 0, shownRing = 0;   // utjevnede vinkler
 
-  const dbg = { aos: 0, doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
+  const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
 
   let started = false;     // brukeren har trykket start
   let permDenied = false;  // kompass-tilgang aktivt avslått (iOS)
   let watchId = null;
-  let sensor  = null;
 
   function setHeading(h, name, rank) {
     if (rank < sourceRank) return;
@@ -343,31 +342,10 @@
     render();
   }
 
-  /* ---- retning: AbsoluteOrientationSensor (Android Chrome) ----- */
-  function startSensor() {
-    if (!('AbsoluteOrientationSensor' in window)) return;
-    try {
-      const s = sensor = new AbsoluteOrientationSensor({ frequency: 30, referenceFrame: 'screen' });
-      s.addEventListener('reading', () => {
-        dbg.aos++;
-        const [x, y, z, w] = s.quaternion;
-        // Skjermens bakside (-z) projisert i horisontalplanet; jord-ramme x=øst, y=nord.
-        // Retningen du ser — og uavhengig av hvordan skjermen er rotert.
-        let vx = -2 * (x * z + w * y);
-        let vy = -2 * (y * z - w * x);
-        if (Math.hypot(vx, vy) < 0.1) {
-          // Ligger flatt: bruk toppen av skjermen i stedet
-          vx = 2 * (x * y - w * z);
-          vy = 1 - 2 * (x * x + z * z);
-        }
-        setHeading(Math.atan2(vx, vy) * 180 / Math.PI, 'sensor', 4);
-      });
-      s.addEventListener('error', () => { /* blokkert sensor: events tar over */ });
-      s.start();
-    } catch (e) { /* Permissions policy o.l. — events tar over */ }
-  }
-
-  /* ---- retning: deviceorientation ------------------------------ */
+  /* ---- retning: deviceorientation ------------------------------
+     (Bevisst INGEN AbsoluteOrientationSensor: håndregnet kvaternion-
+     projeksjon ga feil kurs når telefonen holdes oppreist på Android.
+     W3C-formelen under er den feltprøvde referansen.) */
   function eulerHeading(alpha, beta, gamma) {
     // W3C-spec-eksempelet: tilt-kompensert kurs = horisontal projeksjon
     // av enhetens -z-akse. Vipping flytter ikke kursen.
@@ -442,7 +420,6 @@
     window.removeEventListener('deviceorientationabsolute', onOrientation, true);
     window.removeEventListener('deviceorientation', onOrientation, true);
     listenOrientation();
-    if (sensor) { try { sensor.start(); } catch (e) { /* allerede i gang */ } }
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -452,7 +429,6 @@
     } else if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
-      if (sensor) { try { sensor.stop(); } catch (e) {} }
     }
   });
 
@@ -515,7 +491,7 @@
     const f = (v, n = 1) => (typeof v === 'number' && !isNaN(v)) ? v.toFixed(n) : '–';
     debugEl.textContent =
       `kilde    ${source} (rank ${sourceRank})\n` +
-      `events   aos ${dbg.aos}  doa ${dbg.doa}  do ${dbg.dor}  rev ${dbg.revives}\n` +
+      `events   doa ${dbg.doa}  do ${dbg.dor}  rev ${dbg.revives}\n` +
       `perm     ${dbg.perm}\n` +
       `webkit   ${f(dbg.webkit)}\n` +
       `αβγ      ${f(dbg.alpha)} ${f(dbg.beta)} ${f(dbg.gamma)}\n` +
@@ -571,7 +547,6 @@
     permDenied = dbg.perm === 'denied';
 
     listenOrientation();
-    startSensor();
     started = true;
 
     el.gate.hidden = true;
