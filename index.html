@@ -623,29 +623,37 @@
   }
 
   /* ---- start ---------------------------------------------------- */
-  el.start.addEventListener('click', async () => {
+  el.start.addEventListener('click', () => {
     el.start.disabled = true;
     el.start.textContent = 'Sikter inn …';
 
-    // iOS krever at dette skjer på et trykk. Noen nettlesere (Arc Search o.l.)
-    // har requestPermission som feiler — da lytter vi likevel: kommer det
-    // ingen events, faller vi til GPS-kurs.
-    try {
-      if (typeof DeviceOrientationEvent !== 'undefined' &&
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        dbg.perm = await DeviceOrientationEvent.requestPermission();
-      } else {
-        dbg.perm = 'ikke påkrevd';
-      }
-    } catch (e) { dbg.perm = 'feilet'; }
-    permDenied = dbg.perm === 'denied';
+    // BEGGE tillatelses-forespørslene må ut synkront i selve trykket.
+    // WebKit (Safari/Chrome på iOS) auto-avslår geolocation uten aktiv
+    // brukergest — et await på kompass-dialogen her brant gesten, og
+    // watchPosition fikk PERMISSION_DENIED uten at noen dialog ble vist.
+    // iOS køer de to dialogene fint etter hverandre.
+    watchPosition();
 
-    listenOrientation();
+    // Noen nettlesere (Arc Search o.l.) har requestPermission som feiler —
+    // da lytter vi likevel: kommer det ingen events, faller vi til GPS-kurs.
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then((p) => { dbg.perm = p; })
+        .catch(() => { dbg.perm = 'feilet'; })
+        .then(() => {
+          permDenied = dbg.perm === 'denied';
+          listenOrientation();
+          render();
+        });
+    } else {
+      dbg.perm = 'ikke påkrevd';
+      listenOrientation();
+    }
+
     started = true;
-
     el.gate.hidden = true;
     el.stage.hidden = false;
-    watchPosition();
     animate();
   });
 
