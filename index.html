@@ -389,7 +389,7 @@
   let shownBubX = 0, shownBubY = 0;           // boble-forskyvning fra sentrum
   let isLevel = false;                        // med hysterese, mot flimring
 
-  const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', alpha: null, beta: null, gamma: null, webkit: null };
+  const dbg = { doa: 0, dor: 0, revives: 0, perm: '-', geo: '-', fixes: 0, alpha: null, beta: null, gamma: null, webkit: null };
 
   let started = false;     // brukeren har trykket start
   let permDenied = false;  // kompass-tilgang aktivt avslått (iOS)
@@ -452,6 +452,7 @@
 
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        dbg.geo = 'ok'; dbg.fixes++;
         const { latitude, longitude, accuracy, heading: course, speed } = pos.coords;
         bearing  = bearingTo(latitude, longitude);
         distance = distanceTo(latitude, longitude);
@@ -468,8 +469,12 @@
         render();
       },
       (err) => {
+        dbg.geo = `err ${err.code} ${err.message}`;
+        // Avslag kan sitte to steder på iOS — nettstedet ELLER systemet.
+        // Sitter det i Stedstjenester kommer det aldri noen dialog, i noen
+        // nettleser, så begge må nevnes.
         fail(err.code === err.PERMISSION_DENIED
-          ? 'Posisjon er avslått for denne siden. I Safari: trykk aA i adressefeltet → Innstillinger for nettsted → Posisjon → Tillat. Privat fane blokkerer også posisjon.'
+          ? 'Posisjon er avslått. Sjekk to steder: aA i adressefeltet → Innstillinger for nettsted → Posisjon → Tillat. Og i iOS-innstillinger: Personvern → Stedstjenester → Safari-nettsteder (eller Chrome) → Under bruk. Privat fane blokkerer også posisjon.'
           : 'Fikk ikke tak i posisjonen din.');
       },
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
@@ -560,6 +565,7 @@
       `kilde    ${source} (rank ${sourceRank})\n` +
       `events   doa ${dbg.doa}  do ${dbg.dor}  rev ${dbg.revives}\n` +
       `perm     ${dbg.perm}\n` +
+      `geo      ${dbg.geo}  fixes ${dbg.fixes}\n` +
       `webkit   ${f(dbg.webkit)}\n` +
       `αβγ      ${f(dbg.alpha)} ${f(dbg.beta)} ${f(dbg.gamma)}\n` +
       `screen∠  ${(screen.orientation && screen.orientation.angle) || 0}\n` +
