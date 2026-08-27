@@ -20,7 +20,7 @@ det er neste steg.
 | Del | Løsning |
 |---|---|
 | Posisjon | `navigator.geolocation.watchPosition`, `enableHighAccuracy: true` |
-| Retning | `webkitCompassHeading` (iOS) / `deviceorientationabsolute` + `alpha` (Android) |
+| Retning | `webkitCompassHeading` (iOS) / `deviceorientationabsolute` + `alpha` (Android). Begge måler fra telefonens toppkant; `screen.orientation.angle` legges til på begge. Android-formelen velger akse etter grepet — toppkanten når telefonen ligger flatt, baksiden når den står oppreist |
 | Peiling | Haversine for avstand, standard great-circle bearing for retning |
 | Animasjon | `requestAnimationFrame` med korteste-vei-interpolasjon, faktor 0.16 |
 | Fallback | Uten magnetometer brukes `coords.heading` fra GPS (krever bevegelse) |
@@ -28,8 +28,8 @@ det er neste steg.
 Konstanter øverst i scriptet:
 
 ```js
-const TARGET      = { lat: 60.3937156, lon: 5.3298621 };
-const ARRIVED_M   = 30;   // under dette regnes du som framme
+const TARGET      = { lat: 60.3937500, lon: 5.3299167 };  // selve døren, målt i felten
+const ARRIVED_M   = 15;   // under dette regnes du som framme
 const ALIGNED_DEG = 10;   // under dette sier den "rett fram"
 ```
 
@@ -49,10 +49,19 @@ Dette er hovedjobben. Sjekkliste:
       Verifiser at `e.absolute === true`; hvis ikke, faller den til GPS-kurs.
 - [ ] Snu deg 180° og se at pila følger etter, ikke bare vibrerer.
 - [ ] Roter telefonen til landskap — pila skal ikke hoppe 90°. Håndteres av
-      `screen.orientation.angle`, men fortegnet er verdt å verifisere på begge
-      plattformer.
+      `screen.orientation.angle` på begge kilder; fortegnet er utledet, ikke
+      feltprøvd, så verifiser på begge plattformer.
+- [ ] Hold telefonen flatt som et kompass, og reis den så opp mot 45–90°. Kursen
+      skal stå stille gjennom hele bevegelsen — det er her akse-valget i
+      `eulerHeading()` slår inn.
 - [ ] Gå mot Kong Oscars gate og bekreft at "framme"-tilstanden (hele skjermen gul)
       slår inn på riktig sted, ikke et kvartal for tidlig.
+- [ ] Stå i døra og les av avstanden. Er `TARGET` riktig, står den nær null. Blir det
+      stående flere titalls meter, peker kompasset på feil punkt — og da er det
+      koordinatet som er feil, ikke kursen.
+- [ ] Sjekk pila fra to motsatte kanter (f.eks. fra Torget og fra Fløibanen). Bommer
+      den på samme fysiske sted begge steder, er det målpunktet eller GPS-en. Bommer
+      den til samme side av deg selv begge steder, er det en vinkelfeil i kursen.
 - [ ] Test med posisjon avslått — feilmeldingen skal være lesbar, ikke en hvit skjerm.
 
 ### 3. Sett opp permanent URL

@@ -322,7 +322,7 @@
   /* =============================================================
      Målet. Bytt disse hvis baren flytter seg.
      ============================================================= */
-  const TARGET = { lat: 60.3937778, lon: 5.3299722 };  // selve døren (60°23'37.6"N 5°19'47.9"E)
+  const TARGET = { lat: 60.3937500, lon: 5.3299167 };  // selve døren (60°23'37.5"N 5°19'47.7"E)
 
   const ARRIVED_M   = 15;   // regnes som framme
   const ALIGNED_DEG = 10;   // regnes som "rett fram"
@@ -405,18 +405,38 @@
 
   /* ---- retning: deviceorientation ------------------------------
      (Bevisst INGEN AbsoluteOrientationSensor: håndregnet kvaternion-
-     projeksjon ga feil kurs når telefonen holdes oppreist på Android.
-     W3C-formelen under er den feltprøvde referansen.) */
+     projeksjon ga feil kurs når telefonen holdes oppreist på Android.) */
+
+  /* Alle kilder gir kurs i enhetens eget koordinatsystem — telefonens
+     toppkant. Skjermens «opp» er noe annet i landskap, så skjermvinkelen
+     må legges til. window.orientation er reserven for eldre Safari. */
+  function screenAngle() {
+    if (screen.orientation && typeof screen.orientation.angle === 'number') {
+      return screen.orientation.angle;
+    }
+    return (((window.orientation || 0) % 360) + 360) % 360;
+  }
+
   function eulerHeading(alpha, beta, gamma) {
-    // W3C-spec-eksempelet: tilt-kompensert kurs = horisontal projeksjon
-    // av enhetens -z-akse. Vipping flytter ikke kursen.
+    // Rotasjonsmatrisen fra spec-en (ZXY). Jordramme: x øst, y nord.
+    // To akser kan bære kursen, og hvilken som duger avhenger av grepet:
+    //   toppkanten (+y) — presis når telefonen ligger flatt, null når den står
+    //   baksiden  (−z)  — presis når telefonen står oppreist, null når den ligger
+    // Den ene kollapser der den andre er presis, så vi tar den med lengst
+    // horisontal projeksjon. Ved ren vipping peker begge samme vei, så
+    // overgangen er sømløs — ingen hopp når du senker telefonen.
     const d = Math.PI / 180;
-    const _x = (beta || 0) * d, _y = (gamma || 0) * d, _z = (alpha || 0) * d;
-    const cX = Math.cos(_x), cY = Math.cos(_y), cZ = Math.cos(_z);
-    const sX = Math.sin(_x), sY = Math.sin(_y), sZ = Math.sin(_z);
-    const Vx = -cZ * sY - sZ * sX * cY;
-    const Vy = -sZ * sY + cZ * sX * cY;
-    return Math.atan2(Vx, Vy) * 180 / Math.PI;
+    const A = (alpha || 0) * d, B = (beta || 0) * d, G = (gamma || 0) * d;
+    const cA = Math.cos(A), sA = Math.sin(A);
+    const cB = Math.cos(B), sB = Math.sin(B);
+    const cG = Math.cos(G), sG = Math.sin(G);
+
+    const topE  = -cB * sA,                topN  = cB * cA;
+    const backE = -cA * sG - sA * sB * cG, backN = -sA * sG + cA * sB * cG;
+
+    return Math.hypot(topE, topN) >= Math.hypot(backE, backN)
+      ? Math.atan2(topE,  topN)  * 180 / Math.PI
+      : Math.atan2(backE, backN) * 180 / Math.PI;
   }
 
   function onOrientation(e) {
@@ -430,12 +450,12 @@
       tiltBeta = e.beta; tiltGamma = e.gamma;
     }
 
+    // Begge kildene måler fra telefonens toppkant, ikke fra skjermens «opp».
+    const scr = screenAngle();
     if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
-      // iOS: tilt-kompensert, relativ til toppen av skjermen → skjermvinkel legges til
-      const screenAngle = (screen.orientation && screen.orientation.angle) || 0;
-      setHeading(e.webkitCompassHeading + screenAngle, 'webkit', 3);
+      setHeading(e.webkitCompassHeading + scr, 'webkit', 3);
     } else if (e.absolute === true && typeof e.alpha === 'number') {
-      setHeading(eulerHeading(e.alpha, e.beta, e.gamma), 'euler', 2);
+      setHeading(eulerHeading(e.alpha, e.beta, e.gamma) + scr, 'euler', 2);
     }
     // Relative events uten webkitCompassHeading brukes ALDRI:
     // gyro med vilkårlig nullpunkt = pil som driver.
@@ -568,7 +588,7 @@
       `geo      ${dbg.geo}  fixes ${dbg.fixes}\n` +
       `webkit   ${f(dbg.webkit)}\n` +
       `αβγ      ${f(dbg.alpha)} ${f(dbg.beta)} ${f(dbg.gamma)}\n` +
-      `screen∠  ${(screen.orientation && screen.orientation.angle) || 0}\n` +
+      `screen∠  ${screenAngle()}\n` +
       `heading  ${f(heading)}\n` +
       `bearing  ${f(bearing)}\n` +
       `avstand  ${f(distance, 0)} m`;
