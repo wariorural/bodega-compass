@@ -28,7 +28,7 @@ det er neste steg.
 Konstanter øverst i scriptet:
 
 ```js
-const TARGET      = { lat: 60.3937778, lon: 5.3299722 };  // selve døren, målt i felten
+const TARGET      = { lat: 60.3937500, lon: 5.3299167 };  // selve døren, målt i felten
 const ARRIVED_M   = 15;   // under dette regnes du som framme
 const ALIGNED_DEG = 10;   // under dette sier den "rett fram"
 ```
