@@ -28,8 +28,8 @@ det er neste steg.
 Konstanter øverst i scriptet:
 
 ```js
-const TARGET      = { lat: 60.3937156, lon: 5.3298621 };
-const ARRIVED_M   = 30;   // under dette regnes du som framme
+const TARGET      = { lat: 60.3937778, lon: 5.3299722 };  // selve døren, målt i felten
+const ARRIVED_M   = 15;   // under dette regnes du som framme
 const ALIGNED_DEG = 10;   // under dette sier den "rett fram"
 ```
 
@@ -56,6 +56,12 @@ Dette er hovedjobben. Sjekkliste:
       `eulerHeading()` slår inn.
 - [ ] Gå mot Kong Oscars gate og bekreft at "framme"-tilstanden (hele skjermen gul)
       slår inn på riktig sted, ikke et kvartal for tidlig.
+- [ ] Stå i døra og les av avstanden. Er `TARGET` riktig, står den nær null. Blir det
+      stående flere titalls meter, peker kompasset på feil punkt — og da er det
+      koordinatet som er feil, ikke kursen.
+- [ ] Sjekk pila fra to motsatte kanter (f.eks. fra Torget og fra Fløibanen). Bommer
+      den på samme fysiske sted begge steder, er det målpunktet eller GPS-en. Bommer
+      den til samme side av deg selv begge steder, er det en vinkelfeil i kursen.
 - [ ] Test med posisjon avslått — feilmeldingen skal være lesbar, ikke en hvit skjerm.
 
 ### 3. Sett opp permanent URL
