@@ -20,7 +20,7 @@ det er neste steg.
 | Del | Løsning |
 |---|---|
 | Posisjon | `navigator.geolocation.watchPosition`, `enableHighAccuracy: true` |
-| Retning | `webkitCompassHeading` (iOS) / `deviceorientationabsolute` + `alpha` (Android) |
+| Retning | `webkitCompassHeading` (iOS) / `deviceorientationabsolute` + `alpha` (Android). Begge måler fra telefonens toppkant; `screen.orientation.angle` legges til på begge. Android-formelen velger akse etter grepet — toppkanten når telefonen ligger flatt, baksiden når den står oppreist |
 | Peiling | Haversine for avstand, standard great-circle bearing for retning |
 | Animasjon | `requestAnimationFrame` med korteste-vei-interpolasjon, faktor 0.16 |
 | Fallback | Uten magnetometer brukes `coords.heading` fra GPS (krever bevegelse) |
@@ -49,8 +49,11 @@ Dette er hovedjobben. Sjekkliste:
       Verifiser at `e.absolute === true`; hvis ikke, faller den til GPS-kurs.
 - [ ] Snu deg 180° og se at pila følger etter, ikke bare vibrerer.
 - [ ] Roter telefonen til landskap — pila skal ikke hoppe 90°. Håndteres av
-      `screen.orientation.angle`, men fortegnet er verdt å verifisere på begge
-      plattformer.
+      `screen.orientation.angle` på begge kilder; fortegnet er utledet, ikke
+      feltprøvd, så verifiser på begge plattformer.
+- [ ] Hold telefonen flatt som et kompass, og reis den så opp mot 45–90°. Kursen
+      skal stå stille gjennom hele bevegelsen — det er her akse-valget i
+      `eulerHeading()` slår inn.
 - [ ] Gå mot Kong Oscars gate og bekreft at "framme"-tilstanden (hele skjermen gul)
       slår inn på riktig sted, ikke et kvartal for tidlig.
 - [ ] Test med posisjon avslått — feilmeldingen skal være lesbar, ikke en hvit skjerm.
